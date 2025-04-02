@@ -71,7 +71,7 @@ struct JobOptions {
    int iodepth = 1;
    int iodepth_batch_complete_min = 0;
    int iodepth_batch_complete_max = 0;
-   int bs = 4096;
+   int bs = 4096;    //zhengxd: block size 4096
    int io_alignment = 0;
    int64_t io_size = filesize; // 0 means no restrictions
    float writePercent = 0; // 0.0 - 1.0
@@ -385,6 +385,7 @@ public:
       keep_running = false;
    }
 
+   //zhengxd: YCSB not used
    int runIo() {
       uint64_t countGets = 0;
       //std::cout << options.name << " ready: ops:" <<  ops << " bs: " << options.bs << std::endl;
@@ -627,7 +628,7 @@ public:
          std::logic_error("not yet implemented");
          lastFsync = preparedWrites;
       } else {
-         req.len = options.bs;
+         req.len = options.bs; //zhengxd: 4KB
          assert(std::mt19937_64::min() == 0);
          if (options.writePercent > 0 && (float)mersene() / std::mt19937_64::max() < options.writePercent) {
             // write

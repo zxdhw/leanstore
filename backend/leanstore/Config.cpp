@@ -80,6 +80,7 @@ DEFINE_string(ioengine, "auto", "auto, spdk, liburing, libaio");
 DEFINE_bool(io_uring_poll_mode, true, "enables IORING_SETUP_IOPOLL");
 DEFINE_int64(io_uring_share_wq, 0, "enables IORING_SETUP_ATTACH_WQ with a single worker");
 DEFINE_bool(raid5, false, "enable RAID 5");
+DEFINE_bool(hitchhike, false, "enable hitchhike");
 // -------------------------------------------------------------------------------------
 DEFINE_bool(persist, false, "");
 DEFINE_uint64(tx_rate, 0, "");

@@ -138,8 +138,10 @@ class BTreeGeneric
          Swip<BTreeNode>& c_swip = target_guard->lookupInner(key, key_length);
          p_guard = std::move(target_guard);
          if (level == height - 1) {
+            //zhengxd: ycsb not use this function
             target_guard = HybridPageGuard(p_guard, c_swip, mode);
          } else {
+            // std::cout<< "zhengxd-log-B1" << std::endl;
             target_guard = HybridPageGuard(p_guard, c_swip);
          }
          level++;

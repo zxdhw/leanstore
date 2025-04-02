@@ -1,5 +1,7 @@
 .idea/
 bin/
+test/
+.vscode/
 build*/
 cmake-*/
 .DS_Store

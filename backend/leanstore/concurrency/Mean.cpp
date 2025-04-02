@@ -110,10 +110,13 @@ void yield(TaskState ts)
 }
 void read(char* data, s64 addr, u64 len)
 {
+   //zhengxd: yscb read path
+   // std::cout<< "zhengxd-log0-R: IoChannel::push" << std::endl;
    env::_instance.blockingIo(IoRequestType::Read, data, addr, len);
 }
 void write(char* data, s64 addr, u64 len)
 {
+    //zhengxd: yscb not use this write path
    env::_instance.blockingIo(IoRequestType::Write, data, addr, len);
 }
 Task& this_task() {

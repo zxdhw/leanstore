@@ -2,6 +2,7 @@
 // -------------------------------------------------------------------------------------
 #include "Units.hpp"
 // -------------------------------------------------------------------------------------
+#include <cstdint>
 #include <string>
 #include <exception>
 // -------------------------------------------------------------------------------------
@@ -24,6 +25,7 @@ struct IoOptions {
    // -------------------------------------------------------------------------------------
    bool raid5 = false;
    int channelCount = 0;
+   bool hitchhike = false;
    // -------------------------------------------------------------------------------------
    IoOptions() {}
    IoOptions(std::string engine, std::string path) : engine(engine), path(path) {}
@@ -33,6 +35,17 @@ struct IoOptions {
          throw std::logic_error("iodepth must be higher than async_batch_submit");
    }
 };
+
+#define HIT_MAX 126;
+struct hitchhiker {
+	uint32_t max;
+	uint32_t in_use;
+	uint32_t size;
+	uint32_t iov_use;
+	uintptr_t addr[127];
+   uint64_t iov[127];
+};
+
 // -------------------------------------------------------------------------------------
 }  // namespace mean
 // -------------------------------------------------------------------------------------

@@ -155,7 +155,7 @@ void TaskExecutor::cycle()
       // good for ycsb 60 thr: p: 2, pp: 32, d: 0
       constexpr int everyPoll = 64;
       constexpr int everyPP = 32;
-      constexpr int delaySubmit = 32;
+      constexpr int delaySubmit = 64;
       DEBUG_TASK_COUNTERS_BLOCK(
          const auto ioPollEnd = readTSC(); counters.ioPollDuration += ioPollEnd - lastCycle; pushCyTrace('i', ioPollEnd);
          counters.taskCount = tasks.size(); counters.taskWaitingCount = waitingTaskCount;
@@ -197,10 +197,14 @@ void TaskExecutor::cycle()
             counters.submitted += submitted;
          )
       } else {
+         // zhengxd: ycsb use delay submit (ycsb path)
+         // std::cout <<"zhengxd-log: --------delay submit:" <<  delaySubmitUntilCycle << " " << cycles <<" " << delaySubmit << std::endl;
          if (ioChannel.submitable() > 0) {
             if (delaySubmitUntilCycle < cycles) {
                delaySubmitUntilCycle = cycles + delaySubmit;
             } else if (delaySubmitUntilCycle == cycles) { 
+               // std::cout << "--------delay submit: " <<ioChannel.submitable() << std::endl;
+               // std::cout<< "zhengxd-log-S0: IoChannel::submit" << std::endl;
                int submitted = ioChannel.submit();
                DEBUG_TASK_COUNTERS_BLOCK(
                   counters.submitCalls++;

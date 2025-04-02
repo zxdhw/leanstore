@@ -224,15 +224,21 @@ int main(int argc, char** argv)
    ioOptions.ioUringShareWq = FLAGS_io_uring_share_wq;
    ioOptions.raid5 = FLAGS_raid5;
    ioOptions.iodepth = (FLAGS_async_batch_size + FLAGS_worker_tasks)*2; // hacky, how to take into account for remotes 
+   ioOptions.hitchhike = FLAGS_hitchhike;
    // -------------------------------------------------------------------------------------
    if (FLAGS_nopp) {
+      std::cout << "---------- not use pp thread-------" << std::endl; 
       ioOptions.channelCount = FLAGS_worker_threads;
       mean::env::init(
          FLAGS_worker_threads, //std::min(std::thread::hardware_concurrency(), FLAGS_tpcc_warehouse_count),
          0/*FLAGS_pp_threads*/, ioOptions);
    } else {
+      std::cout << "----------use pp thread-------" << std::endl; 
       ioOptions.channelCount = FLAGS_worker_threads + FLAGS_pp_threads;
       mean::env::init(FLAGS_worker_threads, FLAGS_pp_threads, ioOptions);
+   }
+   if(FLAGS_hitchhike) {
+      std::cout << "----------use hitchhike-------" << std::endl; 
    }
    mean::env::start(run_ycsb);
    // -------------------------------------------------------------------------------------

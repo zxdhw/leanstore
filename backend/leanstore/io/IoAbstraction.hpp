@@ -102,6 +102,7 @@ class Raid0Channel : public IoChannel
    }
    // -------------------------------------------------------------------------------------
    void pushIoRequest(IoBaseRequest* base_req) override { 
+      // std::cout<< "zhengxd-log3: IoChannel::push" << std::endl;
       const std::size_t offset = offsetof(RaidRequest<TImplRequest>, base);
       char *raid_request_ptr_char = reinterpret_cast<char *>(base_req) - offset; // a bit of a hack
       RaidRequest<TImplRequest>* req = reinterpret_cast<RaidRequest<TImplRequest>*>(raid_request_ptr_char);
@@ -117,6 +118,7 @@ class Raid0Channel : public IoChannel
    };
    // -------------------------------------------------------------------------------------
    void _push(const IoBaseRequest& usr) override { 
+      // std::cout<< "zhengxd-log2: IoChannel::push" << std::endl;
       IoBaseRequest* req = getIoRequest();
       if (!req) {
          throw std::logic_error("Cannot push more: free: " + std::to_string(request_stack.free) + " pushed: " + std::to_string(request_stack.pushed)  + " max: " + std::to_string(request_stack.max_entries));
@@ -136,8 +138,8 @@ class Raid0Channel : public IoChannel
       }
       return request_stack.submitStackSize();
    };
-   int _submit() override { 
-      //  
+   int _submit() override { // zhengxd: RAID0Channel submit
+      //  zhengxd: ycsb not use remote
       if (remote_client.remote_count > 0) {
          for (int i = 0; i < remote_client.remote_count; i++) {
             IoBaseRequest* req;
@@ -157,10 +159,12 @@ class Raid0Channel : public IoChannel
          raid.calc(req->base.addr, device, raidedOffset);
          req->base.device = device;
          req->base.offset = raidedOffset;
+         //zhengxd: innerCallback used for completion and callback to task thread
          req->base.innerCallback.user_data.val.ptr = req;
          req->base.innerCallback.user_data2.val.ptr = this;
          req->base.innerCallback.callback = [](IoBaseRequest* req) {
             auto rr = reinterpret_cast<RaidRequest<TImplRequest>*>(req->innerCallback.user_data.val.ptr);
+            // zhengxd: call back to task thread
             rr->base.user.callback(&rr->base);
             auto this_ptr = (Raid0Channel<TIoEnvironment, TIoChannel,TImplRequest>*)req->innerCallback.user_data2.val.ptr;
             auto ch = reinterpret_cast<Raid0Channel<TIoEnvironment, TIoChannel,TImplRequest>*>(this_ptr);
@@ -184,10 +188,12 @@ class Raid0Channel : public IoChannel
          COUNTERS_BLOCK() { leanstore::SSDCounters::myCounters().pushed[device]++; }
          COUNTERS_BLOCK() { counters.handleSubmitReq(req->base); }
 			req->base.stats.submit_time = readTSC();
-         io_channel._push(req);
+         // std::cout<< "zhengxd-log6: IoChannel::push" << std::endl;
+         io_channel._push(req); //zhengxd: iouring push
          __builtin_prefetch(&req->impl,0,1);
       }
-      return io_channel._submit();
+      // std::cout<< "zhengxd-log-S2: IoChannel::submit" << std::endl;
+      return io_channel._submit(); ////zhengxd: iouring submit
    };
    int _poll(int min = 0) override { 
       int ret = io_channel._poll(min);

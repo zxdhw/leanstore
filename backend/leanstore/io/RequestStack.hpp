@@ -24,7 +24,7 @@ class RequestStack
    const int max_entries;
    int free;
    int pushed = 0;
-
+   //zhengxd: maybe not used in branch io?
    RequestStack(int max_entries) : max_entries(max_entries), free(max_entries)
    {
       requests = std::make_unique<R[]>(max_entries);
@@ -54,6 +54,7 @@ class RequestStack
    }
    /* user -> to submit */
    void pushToSubmitStack(R* req) {
+      // std::cout<< "zhengxd-log4: IoChannel::push" << std::endl;
       submit_stack[pushed] = req;
       pushed++;
    }

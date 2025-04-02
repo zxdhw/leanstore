@@ -233,7 +233,7 @@ void TaskManager::parallelFor(BlockedRange bb, std::function<void(BlockedRange, 
    int originExecId = TaskExecutor::localExec().id();
    Task* originTask = &TaskExecutor::localExec().currentTask();
    if (bbgranularity < 1) { bbgranularity = std::max(1ul, (bb.end - bb.begin)/threads/tasks/20); }
-   //std::cout << "threads: " << threads << " tasks: " << tasks << " granularity: " << bbgranularity << std::endl;
+   std::cout << "threads: " << threads << " tasks: " << tasks << " granularity: " << bbgranularity << std::endl;
    const unsigned int totalTasks = threads*tasks;
    std::atomic<u64> bbnow = bb.begin;
    std::atomic<u64> doneTasks = 0;
@@ -294,6 +294,7 @@ void TaskManager::yield(TaskState ts)
    TaskExecutor::yieldCurrentTask(ts);
 }
 // -------------------------------------------------------------------------------------
+//zhengxd: process the io request
 void TaskManager::blockingIo(IoRequestType type, char* data, s64 addr, u64 len)
 {
    UserIoCallback cb;
@@ -306,7 +307,7 @@ void TaskManager::blockingIo(IoRequestType type, char* data, s64 addr, u64 len)
            },
    cb.user_data.val.s = TaskExecutor::localExec().id();
    cb.user_data2.val.ptr = &TaskExecutor::localExec().currentTask();
-
+   // std::cout<< "zhengxd-log0.1: IoChannel::push" << std::endl;
    TaskExecutor::localExec().ioChannel.push(type, data, addr, len, cb);
    //TaskExecutor::localExec().ioChannel.submit();
    TaskExecutor::yieldCurrentTask(TaskState::WaitIo);

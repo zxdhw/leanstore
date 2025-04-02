@@ -107,6 +107,7 @@ class BufferManager
          swip_guard.recheck();
          return bf;
       } else {
+         // std::cout<< "zhengxd-log0-R3: IoChannel::push" << std::endl;
          return resolveSwip(swip_guard, swip_value);
       }
    }

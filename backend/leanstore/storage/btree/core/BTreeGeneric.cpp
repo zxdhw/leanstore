@@ -41,6 +41,7 @@ void BTreeGeneric::trySplit(BufferFrame& to_split, s16 favored_split_pos)
    ParentSwipHandler parent_handler;
    findParent(*this, to_split, parent_handler);
    HybridPageGuard<BTreeNode> p_guard = parent_handler.getParentReadPageGuard<BTreeNode>();
+   // std::cout<< "zhengxd-log-B8" << std::endl;
    HybridPageGuard<BTreeNode> c_guard = HybridPageGuard(p_guard, parent_handler.swip->cast<BTreeNode>());
    if (c_guard->count <= 2)
       return;
@@ -549,6 +550,7 @@ void BTreeGeneric::findParentSlowPath(BTreeGeneric& btree, BufferFrame& to_find,
       if (c_swip->isEVICTED()) {
          jumpmu::jump();
       }
+      // std::cout<< "zhengxd-log-B4" << std::endl;
       c_guard = HybridPageGuard(p_guard, c_swip->cast<BTreeNode>());
       level++;
    }
@@ -628,6 +630,7 @@ void BTreeGeneric::iterateChildrenSwips(void*, BufferFrame& bf, std::function<bo
 // -------------------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------------------
+//zhengxd: ycsb not use this function
 s64 BTreeGeneric::iterateAllPagesRec(HybridPageGuard<BTreeNode>& node_guard,
                                      std::function<s64(BTreeNode&)> inner,
                                      std::function<s64(BTreeNode&)> leaf)

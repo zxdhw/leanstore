@@ -1,7 +1,9 @@
 #include "IoChannel.hpp"
+#include <functional>
 // -------------------------------------------------------------------------------------
 namespace mean
 {
+   //zhengxd: ycsb not use
 void IoChannel::push(const IoBaseRequest& req)
 {
    _push(req);
@@ -9,6 +11,7 @@ void IoChannel::push(const IoBaseRequest& req)
 }
 int IoChannel::submit()
 {
+   // std::cout<< "zhengxd-log-S1: IoChannel::submit" << std::endl;
    int submitted = _submit();
    COUNTERS_BLOCK() { counters.handleSubmit(submitted); }
    return submitted;
@@ -22,12 +25,15 @@ int IoChannel::poll(int min)
 // -------------------------------------------------------------------------------------
 void IoChannel::push(IoRequestType type, char* data, s64 addr, u64 len, UserIoCallback cb, bool write_back)
 {
+   // std::cout<< "zhengxd-log1: IoChannel::push" << std::endl;
    IoBaseRequest req(type, data, addr, len, cb, write_back);
    _push(req);
    COUNTERS_BLOCK() { counters.handlePush(); }
 }
+//zhengxd: pushWrite is used and pushRead are not used
 void IoChannel::pushWrite(char* data, s64 addr, u64 len, UserIoCallback cb, bool write_back)
 {
+   // std::cout<< "zhengxd-log0.2: IoChannel::push" << std::endl;
    push(IoRequestType::Write, data, addr, len, cb, write_back);
 }
 void IoChannel::pushRead(char* data, s64 addr, u64 len, UserIoCallback cb, bool write_back)
