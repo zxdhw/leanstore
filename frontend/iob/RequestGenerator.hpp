@@ -300,11 +300,11 @@ public:
 
       int align = 0;
       //rd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs) + 512, 512) + 512;
-      rd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs), 512);
+      rd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs), 4096);
       //std::cout << "rd align 4096: " << (u64)((u64)rd % 4096) << " 512: " <<  (u64)((u64)rd % 512) << std::endl;
       //wd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs) + 512, 512);
       // WELL, seems like it is slower when not aligned to 4K
-      wd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs), 512);
+      wd = (char*)IoInterface::allocIoMemoryChecked(((options.iodepth + align)*options.bs), 4096);
       for (int i = 0; i < options.iodepth; i++) {
          readData[i] = rd + ((align + options.bs)*i) + 0; //(char*) IoInterface::allocIoMemoryChecked(options.bs, 1);
          writeData[i] = wd + ((align + options.bs)*i) + 0;// (char*) IoInterface::allocIoMemoryChecked(options.bs, 1);

@@ -18,6 +18,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -190,7 +191,7 @@ int LiburingChannel::_submit()
    struct hitchhiker* hite;
    auto hit_req = request_stack[0]; //zhengxd: init hit-req
    uint32_t hit_merge = 0;
-
+   // std::cout << "submit: " << request_stack.size() << std::endl;
    for (unsigned i = 0; i < request_stack.size(); i++) {
       auto req = request_stack[i];
       // std::cout << "submit: " << i << " bf?: " << (void*)request_stack->submit_stack.get()[i]->base.user_data << std::endl << std::flush;
@@ -242,6 +243,7 @@ int LiburingChannel::_submit()
                prep_uring_cmd(nvme_cmd_read, sqe, *fd, &req->impl.iov, raidedOffset / lba_sz, req->impl.iov.iov_len/lba_sz);
             } else if (ioOptions.hitchhike){
                // zhengxd: init mian req
+               // std::cout << "hitchhike: " << i << std::endl;
                if(hit_merge == 0){
                   //zhengxd: get a empty sqe
                   struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
@@ -250,14 +252,18 @@ int LiburingChannel::_submit()
                   
                   hit_sqe = sqe;
                   hit_merge = 1;
-                  io_uring_prep_readv(sqe, *fd, &req->impl.iov, 1, raidedOffset);
+                  // io_uring_prep_readv(sqe, *fd, &req->impl.iov, 1, raidedOffset);
+                  io_uring_prep_rw(IORING_OP_READ, sqe, *fd, req->impl.iov.iov_base,req->impl.iov.iov_len, raidedOffset);
                   //zhengxd: init hitchhiker callback
+                  std::cout <<" ----hitchhike: buf addr" << req->impl.iov.iov_base << std::endl;
                   hit_req = req;
+                  hit_req->pointers.clear();
                   hit_req->resize_pointers(all);
                   //zhengxd: get iouring hite
-                  hite = reinterpret_cast<struct hitchhiker*>(io_uring_get_hite(&ring));
+                  hite = io_uring_get_hite(&ring);
                   ensure(hite);
-                  memset(hite, 0, sizeof(*hite));
+                  hite->in_use = 0;
+                  hite->iov_use = 0;
                   hite->size = static_cast<uint32_t>(req->impl.iov.iov_len);
                } else {
                   //zhengxd : push hitchhiker to hites
@@ -268,12 +274,16 @@ int LiburingChannel::_submit()
                   }
                   // zhengxd: push hitchhiker to hites
                   hite->iov[hite->max]= reinterpret_cast<uintptr_t> (req->impl.iov.iov_base);
+                  std::cout <<" ----hitchhike: buf addr" << req->impl.iov.iov_base << std::endl;
                   hite->addr[hite->max]=raidedOffset;
-                  hite->max++;
+                  // std::cout<< "push hitchhiker: " << raidedOffset << std::endl;
+                  
                   //zhengxd: init callback info
                   hit_req->hit_number++;
-                  hit_req->pointers.push_back(req);
+                  hit_req->pointers[hite->max] = req;
+                  std::cout << "hitchhike init: req: " << req << "ptr: "<< hit_req->pointers[hite->max] << std::endl;
                   hit_merge ++;
+                  hite->max++;
                }
             } else {
                //zhengxd: get a empty sqe
@@ -297,6 +307,8 @@ int LiburingChannel::_submit()
    }
    // LEANSTORE_BLOCK( PPCounters::myCounters().io_submits++; )
    submitted = io_uring_submit(&ring);
+   if(submitted == (all - reads + 1) && ioOptions.hitchhike ) submitted = all;
+
    if (reads > 0) {
       leanstore::WorkerCounters::myCounters().submit_calls++;
       leanstore::WorkerCounters::myCounters().submitted.fetch_add(reads);
@@ -352,9 +364,11 @@ int LiburingChannel::_poll(int)
       if(req->hit_number > 0){
          //zhengxd: call back to task thread
          for(int i = 0; i < req->hit_number; i++){
+            std::cout << "hitchhike callback: req: " << req->pointers[i] << std::endl;
             auto req_hit = reinterpret_cast<RaidRequest<LiburingIoRequest>*>(req->pointers[i]);
             req->base.innerCallback.callback(&req_hit->base);
          }
+         done += req->hit_number;
       }
    }
    return done;

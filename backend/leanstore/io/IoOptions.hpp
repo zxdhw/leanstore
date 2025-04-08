@@ -37,14 +37,14 @@ struct IoOptions {
 };
 
 #define HIT_MAX 126;
-struct hitchhiker {
-	uint32_t max;
-	uint32_t in_use;
-	uint32_t size;
-	uint32_t iov_use;
-	uintptr_t addr[127];
-   uint64_t iov[127];
-};
+// struct hitchhiker {
+// 	uint32_t max;
+// 	uint32_t in_use;
+// 	uint32_t size;
+// 	uint32_t iov_use;
+// 	uint64_t addr[127];
+//    uint64_t iov[127];
+// };
 
 // -------------------------------------------------------------------------------------
 }  // namespace mean

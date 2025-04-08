@@ -283,7 +283,7 @@ BufferFrame& BufferManager::resolveSwip(Guard& swip_guard, Swip<BufferFrame>& sw
             // assumes parent and child are exclusively locked 
             swip_value.bfRef().header.optimistic_parent_pointer.parent.last_swip_invalidation_version = swip_value.bfRef().header.latch.version;
             // hacky, have to find parent bf from swip, pid and  pos. 
-            static_assert(sizeof(BufferFrame) == 512+PAGE_SIZE);
+            static_assert(sizeof(BufferFrame) == 4096+PAGE_SIZE);
             u64 bf_index = ((u64)swip_x_guard.latch - (u64)this->bfs) / sizeof(BufferFrame);
             BufferFrame& parent_bf = this->bfs[bf_index];
             assert(&parent_bf.header.latch == swip_x_guard.latch); // the above calculation is correct

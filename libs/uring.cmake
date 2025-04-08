@@ -6,12 +6,13 @@ find_program(MAKE_EXE NAMES gmake nmake make)
 ExternalProject_Add(
         liburing-ext
         PREFIX "vendor/liburing"
-        GIT_REPOSITORY "https://github.com/zxdhw/liburing.git"
-        GIT_TAG hitchhiker
+        # GIT_REPOSITORY "https://github.com/zxdhw/liburing.git"
+        # GIT_TAG c137ea2be2409549fa9ab0d90459328da4c90f7f
+        SOURCE_DIR "/home/zhengxd/liburing"
         TIMEOUT 10
         CONFIGURE_COMMAND "./configure"
         BUILD_IN_SOURCE TRUE
-        BUILD_COMMAND make
+        BUILD_COMMAND make -j
         UPDATE_COMMAND ""
         INSTALL_COMMAND ""
 )
