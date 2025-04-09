@@ -468,7 +468,8 @@ BufferFrame& BufferManager::resolveSwip(Guard& swip_guard, Swip<BufferFrame>& sw
 // -------------------------------------------------------------------------------------
 void BufferManager::readPageSync(u64 pid, u8* destination)
 {
-   assert(u64(destination) % 512 == 0);
+   //zhengxd: modify alignment to 4096
+   assert(u64(destination) % 4096 == 0);
    s64 bytes_left = PAGE_SIZE;
    // std::cout<< "zhengxd-log0-R1: IoChannel::push" << std::endl;
    mean::task::read(reinterpret_cast<char*>(destination), pid * PAGE_SIZE, bytes_left);

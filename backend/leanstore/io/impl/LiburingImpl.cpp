@@ -190,7 +190,7 @@ int LiburingChannel::_submit()
    struct io_uring_sqe* hit_sqe;
    struct hitchhiker* hite;
    auto hit_req = request_stack[0]; //zhengxd: init hit-req
-   uint32_t hit_merge = 0;
+   uint32_t hit_merge = 0, index = 0;
    // std::cout << "submit: " << request_stack.size() << std::endl;
    for (unsigned i = 0; i < request_stack.size(); i++) {
       auto req = request_stack[i];
@@ -255,7 +255,7 @@ int LiburingChannel::_submit()
                   // io_uring_prep_readv(sqe, *fd, &req->impl.iov, 1, raidedOffset);
                   io_uring_prep_rw(IORING_OP_READ, sqe, *fd, req->impl.iov.iov_base,req->impl.iov.iov_len, raidedOffset);
                   //zhengxd: init hitchhiker callback
-                  std::cout <<" ----hitchhike: buf addr" << req->impl.iov.iov_base << std::endl;
+                  // std::cout <<" ----hitchhike: buf addr" << req->impl.iov.iov_base << std::endl;
                   hit_req = req;
                   hit_req->pointers.clear();
                   hit_req->resize_pointers(all);
@@ -265,6 +265,7 @@ int LiburingChannel::_submit()
                   hite->in_use = 0;
                   hite->iov_use = 0;
                   hite->size = static_cast<uint32_t>(req->impl.iov.iov_len);
+                  std::cout <<" ----hitchhike main: buf addr" << req->impl.iov.iov_base << std::endl;
                } else {
                   //zhengxd : push hitchhiker to hites
                   if(hit_merge == 1){
@@ -273,17 +274,18 @@ int LiburingChannel::_submit()
                      hit_sqe->flags |= IOSQE_HIT;
                   }
                   // zhengxd: push hitchhiker to hites
-                  hite->iov[hite->max]= reinterpret_cast<uintptr_t> (req->impl.iov.iov_base);
-                  std::cout <<" ----hitchhike: buf addr" << req->impl.iov.iov_base << std::endl;
-                  hite->addr[hite->max]=raidedOffset;
+                  hite->iov[index] = (unsigned long) (req->impl.iov.iov_base);
+                  std::cout <<" ----hitchhike: iov:  "<< hite->iov[index]<< std::endl;
+                  hite->addr[index] = raidedOffset;
                   // std::cout<< "push hitchhiker: " << raidedOffset << std::endl;
                   
                   //zhengxd: init callback info
                   hit_req->hit_number++;
-                  hit_req->pointers[hite->max] = req;
-                  std::cout << "hitchhike init: req: " << req << "ptr: "<< hit_req->pointers[hite->max] << std::endl;
-                  hit_merge ++;
-                  hite->max++;
+                  hit_req->pointers[index] = req;
+                  // std::cout << "hitchhike init: req: " << req << "ptr: "<< hit_req->pointers[hite->max] << std::endl;
+                  hit_merge++;
+                  hite->max = index;
+                  index++;
                }
             } else {
                //zhengxd: get a empty sqe
@@ -364,7 +366,7 @@ int LiburingChannel::_poll(int)
       if(req->hit_number > 0){
          //zhengxd: call back to task thread
          for(int i = 0; i < req->hit_number; i++){
-            std::cout << "hitchhike callback: req: " << req->pointers[i] << std::endl;
+            // std::cout << "hitchhike callback: req: " << req->pointers[i] << std::endl;
             auto req_hit = reinterpret_cast<RaidRequest<LiburingIoRequest>*>(req->pointers[i]);
             req->base.innerCallback.callback(&req_hit->base);
          }
