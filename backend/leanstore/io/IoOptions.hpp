@@ -36,7 +36,7 @@ struct IoOptions {
    }
 };
 
-#define HIT_MAX 126;
+// #define HIT_MAX 126;
 // struct hitchhiker {
 // 	uint32_t max;
 // 	uint32_t in_use;

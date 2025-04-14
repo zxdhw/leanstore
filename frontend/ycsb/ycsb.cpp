@@ -15,10 +15,13 @@
 // -------------------------------------------------------------------------------------
 #include <gflags/gflags.h>
 // -------------------------------------------------------------------------------------
+#include <cstdint>
 #include <iostream>
 #include <set>
 // -------------------------------------------------------------------------------------
 DEFINE_uint32(ycsb_read_ratio, 100, "");
+DEFINE_uint32(ycsb_scan_ratio, 0, "");
+DEFINE_uint32(ycsb_type, 1, ""); // 1: A/B/C 2:D; 3:E; 4:F;
 DEFINE_uint64(ycsb_tuple_count, 0, "");
 DEFINE_uint32(ycsb_payload_size, 100, "tuple size in bytes");
 DEFINE_uint32(ycsb_warmup_rounds, 0, "");
@@ -59,7 +62,9 @@ void run_ycsb() {
    auto& table = *adapter;
    const u64 ycsb_tuple_count = (FLAGS_ycsb_tuple_count)
                                     ? FLAGS_ycsb_tuple_count
-                                    : FLAGS_target_gib * 1024 * 1024 * 1024 * 1.0 / 2.0 / (sizeof(YCSBKey) + sizeof(YCSBPayload));
+                                    : FLAGS_target_gib * 1024 * 1024 * 1024 * 1.0  / (sizeof(YCSBKey) + sizeof(YCSBPayload));
+   
+
    // Insert values
    {
       const u64 n = ycsb_tuple_count;
@@ -78,9 +83,9 @@ void run_ycsb() {
             utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
             auto& key = t_i;
             table.insert(key, payload);
-            YCSBPayload result; /// FIXME remove this check
-            table.lookup(t_i, result);
-            ensure(result == payload);
+            // YCSBPayload result; /// FIXME remove this check
+            // table.lookup(t_i, result);
+            // ensure(result == payload);
 
             mean::task::yield();
          }
@@ -117,6 +122,7 @@ void run_ycsb() {
             }
          };
          mean::task::parallelFor(bb, ycsb_fun, FLAGS_worker_tasks, 100000);
+         // mean::task::parallelFor(bb, ycsb_fun,1, 1000000000);
          end = chrono::high_resolution_clock::now();
       }
       // -------------------------------------------------------------------------------------
@@ -142,6 +148,10 @@ void run_ycsb() {
        std::mt19937 gen(rd());
        std::exponential_distribution<> expDist(rate);
        volatile u64 i = bb.begin;
+       //yscb D used
+       uint64_t ycsb_last = 0;
+       uint64_t ycsb_scan_length = 0;
+       YCSBKey scan_key = 0;
 
          running_threads_counter++;
          int timeCheck = 0;
@@ -152,15 +162,77 @@ void run_ycsb() {
                cancelled = true;
                break;
             }
-            YCSBKey key = zipf_random->rand();
-            assert(key < ycsb_tuple_count);
-            YCSBPayload result;
-            if (FLAGS_ycsb_read_ratio == 100 || utils::RandomGenerator::getRandU64(0, 100) < FLAGS_ycsb_read_ratio) {
-               table.lookup(key, result);
+            //zhengxd: YCSB A B C
+            if(FLAGS_ycsb_type == 1){
+               YCSBKey key = zipf_random->rand();
+               assert(key < ycsb_tuple_count);
+               YCSBPayload result;
+               if (FLAGS_ycsb_read_ratio == 100 || utils::RandomGenerator::getRandU64(0, 100) < FLAGS_ycsb_read_ratio) {
+                  table.lookup(key, result);
+               } else {
+                  YCSBPayload payload;
+                  utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
+                  table.update(key, payload);
+               }
+            //zhengxd: YCSB D
+            } else if (FLAGS_ycsb_type == 2) {
+               YCSBKey key;
+               YCSBPayload result;
+               if (ycsb_last!= 0 && utils::RandomGenerator::getRandU64(0, 100) < FLAGS_ycsb_read_ratio) {
+                  key = zipf_random->rand() % ycsb_last;
+                  key = ycsb_last - key;
+                  key =  utils::FNV::hash(key) % ycsb_tuple_count;
+                  table.lookup(key, result);
+               } else {
+                  ycsb_last++;
+                  key =  utils::FNV::hash(ycsb_last) % ycsb_tuple_count;
+                  YCSBPayload payload;
+                  utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
+                  table.update(key, payload);
+               }
+            //zhengxd: YCSB E
+            } else if (FLAGS_ycsb_type == 3) {
+               YCSBPayload result;
+               YCSBKey key;
+               if ( ycsb_scan_length > 0 || utils::RandomGenerator::getRandU64(0, 100) < FLAGS_ycsb_scan_ratio) {
+                  if ( ycsb_scan_length == 0) {
+                     ycsb_scan_length = utils::RandomGenerator::getRandU64(1, 100);
+                     // ycsb_scan_length = 100;
+                     scan_key = zipf_random->rand();
+                     assert(scan_key < ycsb_tuple_count);
+                  } 
+                  table.lookup(scan_key, result);
+                  mean::task::yield();
+                  scan_key++;
+                  ycsb_scan_length--;
+                  if(scan_key >= ycsb_tuple_count) {
+                     ycsb_scan_length = 0;
+                  }
+               } else {
+                  key = zipf_random->rand();
+                  assert(key < ycsb_tuple_count);
+                  YCSBPayload payload;
+                  utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
+                  table.update(key, payload);
+                  mean::task::yield();
+               }
+            //zhengxd: YCSB F
+            } else if (FLAGS_ycsb_type == 4) {
+               YCSBKey key = zipf_random->rand();
+               assert(key < ycsb_tuple_count);
+               YCSBPayload result;
+               if (utils::RandomGenerator::getRandU64(0, 100) < FLAGS_ycsb_read_ratio) {
+                  table.lookup(key, result);
+               } else {
+                  table.lookup(key, result);
+                  YCSBPayload payload;
+                  utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
+                  table.update(key, payload);
+                  mean::task::yield();
+               }
             } else {
-               YCSBPayload payload;
-               utils::RandomGenerator::getRandString(reinterpret_cast<u8*>(&payload), sizeof(YCSBPayload));
-               table.update(key, payload);
+               std::cout << "unknown ycsb type" << std::endl;
+               exit(1);
             }
            i++;
            auto now = mean::readTSC();

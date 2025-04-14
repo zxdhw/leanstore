@@ -265,7 +265,7 @@ int LiburingChannel::_submit()
                   hite->in_use = 0;
                   hite->iov_use = 0;
                   hite->size = static_cast<uint32_t>(req->impl.iov.iov_len);
-                  std::cout <<" ----hitchhike main: buf addr" << req->impl.iov.iov_base << std::endl;
+                  // std::cout <<" ----hitchhike main: buf addr" << req->impl.iov.iov_base << std::endl;
                } else {
                   //zhengxd : push hitchhiker to hites
                   if(hit_merge == 1){
@@ -275,7 +275,7 @@ int LiburingChannel::_submit()
                   }
                   // zhengxd: push hitchhiker to hites
                   hite->iov[index] = (unsigned long) (req->impl.iov.iov_base);
-                  std::cout <<" ----hitchhike: iov:  "<< hite->iov[index]<< std::endl;
+                  // std::cout <<" ----hitchhike: iov:  "<< hite->iov[index]<< std::endl;
                   hite->addr[index] = raidedOffset;
                   // std::cout<< "push hitchhiker: " << raidedOffset << std::endl;
                   

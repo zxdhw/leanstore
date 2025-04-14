@@ -2,13 +2,17 @@ include(ExternalProject)
 find_package(Git REQUIRED)
 find_program(MAKE_EXE NAMES gmake nmake make)
 
+# get leanstore directory 
+get_filename_component(PROJECT_PARENT_DIR "${CMAKE_SOURCE_DIR}/.." ABSOLUTE)
+
 # Liburing
 ExternalProject_Add(
         liburing-ext
         PREFIX "vendor/liburing"
         # GIT_REPOSITORY "https://github.com/zxdhw/liburing.git"
         # GIT_TAG c137ea2be2409549fa9ab0d90459328da4c90f7f
-        SOURCE_DIR "/home/zhengxd/liburing"
+        # SOURCE_DIR "/home/zhengxd/liburing"
+        SOURCE_DIR "${PROJECT_PARENT_DIR}/liburing" 
         TIMEOUT 10
         CONFIGURE_COMMAND "./configure"
         BUILD_IN_SOURCE TRUE

@@ -35,7 +35,7 @@ DEFINE_bool(root, false, "does this process have root rights ?");
 DEFINE_uint64(backoff_strategy, 0, "");
 // -------------------------------------------------------------------------------------
 DEFINE_string(zipf_path, "/bulk/zipf", "");
-DEFINE_double(zipf_factor, 0.0, "");
+DEFINE_double(zipf_factor, 0.99, "");
 DEFINE_double(target_gib, 0.0, "size of dataset in gib (exact interpretation depends on the driver)");
 DEFINE_uint64(run_for_seconds, 10, "Keep the experiment running for x seconds");
 DEFINE_uint64(warmup_for_seconds, 10, "Warmup for x seconds");
@@ -63,7 +63,7 @@ DEFINE_int64(trace_trigger_probability, 100, "");
 DEFINE_string(tag, "", "Unique identifier for this, will be appended to each line csv");
 // -------------------------------------------------------------------------------------
 DEFINE_bool(out_of_place, false, "");
-DEFINE_bool(optimistic_parent_pointer, true, "");
+DEFINE_bool(optimistic_parent_pointer, false, "");
 // -------------------------------------------------------------------------------------
 DEFINE_bool(wal, false, "");
 DEFINE_uint64(wal_offset_gib, 1, "");

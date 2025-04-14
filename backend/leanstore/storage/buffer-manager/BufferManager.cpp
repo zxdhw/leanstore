@@ -45,6 +45,7 @@ BufferManager::BufferManager()
    // Init DRAM pool
    {
       dram_pool_size = FLAGS_dram_gib * 1024 * 1024 * 1024 / sizeof(BufferFrame);
+      std::cout<< "dram_pool_size: " << dram_pool_size << std::endl;
       const u64 dram_total_size = sizeof(BufferFrame) * (dram_pool_size + safety_pages);
       //zhengxd: use mmap to allocate memory
       bfs = reinterpret_cast<BufferFrame*>(mean::IoInterface::allocIoMemoryChecked(dram_total_size, 512));
