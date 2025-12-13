@@ -125,6 +125,7 @@ void* LinuxBaseEnv::allocIoMemoryChecked(size_t size, size_t align)
 };
 void* LinuxBaseEnv::allocIoMemory(size_t size, [[maybe_unused]]size_t align)
 {
+   //zhengxd: alloc memory for libaio and io_uring
    void* bfs = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
    madvise(bfs, size, MADV_HUGEPAGE);
    madvise(bfs, size,

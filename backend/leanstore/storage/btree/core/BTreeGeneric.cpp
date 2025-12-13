@@ -549,6 +549,7 @@ void BTreeGeneric::findParentSlowPath(BTreeGeneric& btree, BufferFrame& to_find,
       if (c_swip->isEVICTED()) {
          jumpmu::jump();
       }
+
       c_guard = HybridPageGuard(p_guard, c_swip->cast<BTreeNode>());
       level++;
    }

@@ -1,5 +1,6 @@
 .idea/
 bin/
+test/
 build*/
 cmake-*/
 .DS_Store

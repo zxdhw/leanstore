@@ -1,5 +1,6 @@
 #pragma once
 // -------------------------------------------------------------------------------------
+#include <sys/types.h>
 #include "Time.hpp"
 #include "Units.hpp"
 #include "Exceptions.hpp"
@@ -7,6 +8,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <vector>
 // -------------------------------------------------------------------------------------
 namespace mean
 {
@@ -85,6 +87,17 @@ template <typename TImplRequest>
 struct RaidRequest {
    TImplRequest impl;
    IoBaseRequest base;
+   uint64_t hit_number = 0; 
+   std::vector<RaidRequest<TImplRequest>*> pointers;
+
+   
+   RaidRequest() = default;
+   void resize_pointers(size_t new_size) {
+         pointers.resize(new_size);
+     }
+
+   ~RaidRequest() {
+   }
 };
 // -------------------------------------------------------------------------------------
 }  // namespace mean

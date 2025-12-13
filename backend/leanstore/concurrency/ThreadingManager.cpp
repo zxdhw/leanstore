@@ -151,6 +151,7 @@ void ThreadingManager::registerPageProvider(void* bf_ptr, int partitions_count) 
    for (int t_i = 0; t_i < partitions_count; t_i++) {
       registerExclusiveThread("pp", t_i, [buffer_manager, t_i, this](){
          while (true) {
+            //zhengxd: pp thread
             buffer_manager->pageProviderCycle(t_i);
             execIoChannel().submit();
             execIoChannel().poll();

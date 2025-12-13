@@ -78,6 +78,7 @@ DECLARE_string(ioengine);
 DECLARE_bool(io_uring_poll_mode);
 DECLARE_int64(io_uring_share_wq);
 DECLARE_bool(raid5);
+DECLARE_bool(hitchhike);
 // -------------------------------------------------------------------------------------
 DECLARE_bool(persist);
 DECLARE_uint64(tx_rate);

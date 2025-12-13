@@ -102,6 +102,7 @@ class Raid0Channel : public IoChannel
    }
    // -------------------------------------------------------------------------------------
    void pushIoRequest(IoBaseRequest* base_req) override { 
+
       const std::size_t offset = offsetof(RaidRequest<TImplRequest>, base);
       char *raid_request_ptr_char = reinterpret_cast<char *>(base_req) - offset; // a bit of a hack
       RaidRequest<TImplRequest>* req = reinterpret_cast<RaidRequest<TImplRequest>*>(raid_request_ptr_char);
@@ -137,7 +138,6 @@ class Raid0Channel : public IoChannel
       return request_stack.submitStackSize();
    };
    int _submit() override { 
-      //  
       if (remote_client.remote_count > 0) {
          for (int i = 0; i < remote_client.remote_count; i++) {
             IoBaseRequest* req;
@@ -184,10 +184,10 @@ class Raid0Channel : public IoChannel
          COUNTERS_BLOCK() { leanstore::SSDCounters::myCounters().pushed[device]++; }
          COUNTERS_BLOCK() { counters.handleSubmitReq(req->base); }
 			req->base.stats.submit_time = readTSC();
-         io_channel._push(req);
+         io_channel._push(req); //zhengxd: iouring push
          __builtin_prefetch(&req->impl,0,1);
       }
-      return io_channel._submit();
+      return io_channel._submit(); ////zhengxd: iouring submit
    };
    int _poll(int min = 0) override { 
       int ret = io_channel._poll(min);

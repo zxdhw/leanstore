@@ -1,4 +1,5 @@
 #include "IoChannel.hpp"
+#include <functional>
 // -------------------------------------------------------------------------------------
 namespace mean
 {
@@ -26,6 +27,7 @@ void IoChannel::push(IoRequestType type, char* data, s64 addr, u64 len, UserIoCa
    _push(req);
    COUNTERS_BLOCK() { counters.handlePush(); }
 }
+//zhengxd: pushWrite is used and pushRead are not used
 void IoChannel::pushWrite(char* data, s64 addr, u64 len, UserIoCallback cb, bool write_back)
 {
    push(IoRequestType::Write, data, addr, len, cb, write_back);

@@ -3,7 +3,9 @@
 // -------------------------------------------------------------------------------------
 #include "../IoInterface.hpp"
 #include "Exceptions.hpp"
+#include "leanstore/io/IoOptions.hpp"
 #include "leanstore/io/IoRequest.hpp"
+#include "leanstore/storage/buffer-manager/BufferFrame.hpp"
 #include "liburing.h"
 #include "liburing/io_uring.h"
 // -------------------------------------------------------------------------------------
@@ -16,6 +18,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -110,6 +113,11 @@ LiburingChannel::LiburingChannel(RaidController<int>& raidCtl, IoOptions ioOptio
    std::cout << "io_uring parameters: sq_entries: " << iouParameters.sq_entries << " cq_entries: " << iouParameters.cq_entries 
       << " flags: " << iouParameters.flags << " sq_thread_cpu: " << iouParameters.sq_thread_cpu << " sq_thread_idle: " << iouParameters.sq_thread_idle 
       << " features: " << iouParameters.features << " wq_fd: "<<iouParameters.wq_fd << std::endl;
+   
+   if(ioOptions.hitchhike){
+      iouParameters.flags |= IORING_SETUP_HIT;
+   }
+
    int ret = io_uring_queue_init_params(ioOptions.iodepth, &ring, &iouParameters);
    if (ret < 0) {
       throw std::logic_error("io_uring_queue_init failed, ret code = " + std::to_string(ret));
@@ -172,15 +180,26 @@ int LiburingChannel::_submit()
 {
    unsigned submitted = 0;
    int reads = 0;
+   //zhengxd: init hitchhike 
+   int all = request_stack.size();
+   struct io_uring_sqe* sqe_once;
+   struct io_uring_sqe* hit_sqe;
+   struct hitchhiker* hite;
+   auto hit_req = request_stack[0]; 
+   uint32_t hit_merge = 0, index = 0;
    for (unsigned i = 0; i < request_stack.size(); i++) {
       auto req = request_stack[i];
       // std::cout << "submit: " << i << " bf?: " << (void*)request_stack->submit_stack.get()[i]->base.user_data << std::endl << std::flush;
-      struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
-      ensure(sqe);
       req->impl.iov.iov_base = req->base.data;  // hack does not work without writev/reqadv
       req->impl.iov.iov_len = req->base.len;
+      req->hit_number = 0;
       switch (req->base.type) {
          case IoRequestType::Write: {
+            //zhengxd: get a empty sqe
+            struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+            ensure(sqe);
+            sqe_once = sqe;
+
             int* fd;
             u64 raidedOffset;
             raidCtl.calc(req->base.addr, req->base.len, fd, raidedOffset);
@@ -210,8 +229,58 @@ int LiburingChannel::_submit()
             // io_uring_prep_read(sqe, fd, req->base.data, req->base.len, req->base.addr);
             // std::cout << "read buf: " << sqe->addr << " len: " << sqe->len << " off: " << sqe->off << std::endl;
             if (ioOptions.ioUringNVMePassthrough) {
+               //zhengxd: get a empty sqe
+               struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+               ensure(sqe);
+               sqe_once = sqe;
+
                prep_uring_cmd(nvme_cmd_read, sqe, *fd, &req->impl.iov, raidedOffset / lba_sz, req->impl.iov.iov_len/lba_sz);
+            } else if (ioOptions.hitchhike){
+               // zhengxd: init mian req
+               if(hit_merge == 0){
+                  //zhengxd: get a empty sqe
+                  struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+                  ensure(sqe);
+                  sqe_once = sqe;
+                  
+                  hit_sqe = sqe;
+                  hit_merge = 1;
+                  // io_uring_prep_readv(sqe, *fd, &req->impl.iov, 1, raidedOffset);
+                  io_uring_prep_rw(IORING_OP_READ, sqe, *fd, req->impl.iov.iov_base,req->impl.iov.iov_len, raidedOffset);
+                  //zhengxd: init hitchhiker callback info
+                  hit_req = req;
+                  hit_req->pointers.clear();
+                  hit_req->resize_pointers(all);
+                  //zhengxd: get iouring hite
+                  hite = io_uring_get_hite(&ring);
+                  ensure(hite);
+                  hite->in_use = 0;
+                  hite->iov_use = 0;
+                  hite->size = static_cast<uint32_t>(req->impl.iov.iov_len);
+               } else {
+                  //zhengxd : push hitchhiker to hites
+                  if(hit_merge == 1){
+                     hite->in_use = 1;
+                     hite->iov_use = 1;
+                     hit_sqe->flags |= IOSQE_HIT;
+                  }
+                  // zhengxd: push hitchhiker to hites
+                  hite->iov[index] = (unsigned long) (req->impl.iov.iov_base);
+                  hite->addr[index] = raidedOffset;
+                  
+                  //zhengxd: init callback info
+                  hit_req->hit_number++;
+                  hit_req->pointers[index] = req;
+                  hit_merge++;
+                  hite->max = index;
+                  index++;
+               }
             } else {
+               //zhengxd: get a empty sqe
+               struct io_uring_sqe* sqe = io_uring_get_sqe(&ring);
+               ensure(sqe);
+               sqe_once = sqe;
+
                io_uring_prep_readv(sqe, *fd, &req->impl.iov, 1, raidedOffset);
             }
             reads++;
@@ -221,10 +290,14 @@ int LiburingChannel::_submit()
          default:
             throw std::logic_error("IoRequestType not supported");
       }
-      io_uring_sqe_set_data(sqe, req);
+      if(hit_merge <= 1 || req->base.type == IoRequestType::Write){
+         io_uring_sqe_set_data(sqe_once, req);
+      }
    }
    // LEANSTORE_BLOCK( PPCounters::myCounters().io_submits++; )
    submitted = io_uring_submit(&ring);
+   if(submitted == (all - reads + 1) && ioOptions.hitchhike ) submitted = all;
+
    if (reads > 0) {
       leanstore::WorkerCounters::myCounters().submit_calls++;
       leanstore::WorkerCounters::myCounters().submitted.fetch_add(reads);
@@ -277,6 +350,14 @@ int LiburingChannel::_poll(int)
       // std::cout << "read ok: " << req->base.data << " len: " << req->base.len << " off: " << req->base.addr << std::endl;
       io_uring_cqe_seen(&ring, cqe);
       req->base.innerCallback.callback(&req->base);
+      if(req->hit_number > 0){
+         //zhengxd: call back to task thread
+         for(int i = 0; i < req->hit_number; i++){
+            auto req_hit = reinterpret_cast<RaidRequest<LiburingIoRequest>*>(req->pointers[i]);
+            req->base.innerCallback.callback(&req_hit->base);
+         }
+         done += req->hit_number;
+      }
    }
    return done;
 }

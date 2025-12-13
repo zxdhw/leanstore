@@ -45,7 +45,9 @@ BufferManager::BufferManager()
    // Init DRAM pool
    {
       dram_pool_size = FLAGS_dram_gib * 1024 * 1024 * 1024 / sizeof(BufferFrame);
+      std::cout<< "dram_pool_size: " << dram_pool_size << std::endl;
       const u64 dram_total_size = sizeof(BufferFrame) * (dram_pool_size + safety_pages);
+      //zhengxd: use mmap to allocate memory
       bfs = reinterpret_cast<BufferFrame*>(mean::IoInterface::allocIoMemoryChecked(dram_total_size, 512));
       // reinterpret_cast<BufferFrame*>(mmap(NULL, dram_total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 
@@ -57,11 +59,12 @@ BufferManager::BufferManager()
       cooling_partitions_count = FLAGS_pp_threads;
       io_partitions_count = (1 << FLAGS_partition_bits);
       partitions_mask = io_partitions_count - 1;
-      
+
       const u64 free_bfs_limit = std::max(std::ceil((FLAGS_free_pct * 1.0 * dram_pool_size / 100.0) / static_cast<double>(cooling_partitions_count)), 0.0); //128.0);
       const u64 cooling_bfs_upper_bound = std::max(std::ceil((FLAGS_cool_pct * 1.0 * dram_pool_size / 100.0) / static_cast<double>(cooling_partitions_count)), 0.0);// 128.0);
 
       std::cout << "free_bfs_limit: " << free_bfs_limit << " cooling_bfs_upper_bound: " << cooling_bfs_upper_bound << std::endl;
+      //zhengxd: maybe change to hitchhike size
       const u64 max_outsanding_ios = (FLAGS_async_batch_size + FLAGS_worker_tasks)*2;
       io_partitions = reinterpret_cast<IoPartition*>(malloc(sizeof(IoPartition) * io_partitions_count));
       for (u64 p_i = 0; p_i < io_partitions_count; p_i++) {
@@ -73,6 +76,7 @@ BufferManager::BufferManager()
          new (cooling_partitions + p_i) CoolingPartition(p_i, cooling_partitions_count, free_bfs_limit, cooling_bfs_upper_bound, max_outsanding_ios);
       }
       // -------------------------------------------------------------------------------------
+      //zhengxd: parallelize to init buffer frames
       utils::Parallelize::parallelRange(dram_total_size, [&](u64 begin, u64 end) { memset(reinterpret_cast<u8*>(bfs) + begin, 0, end - begin); });
       utils::Parallelize::parallelRange(dram_pool_size, [&](u64 bf_b, u64 bf_e) {
          u64 p_i = 0;
@@ -280,7 +284,7 @@ BufferFrame& BufferManager::resolveSwip(Guard& swip_guard, Swip<BufferFrame>& sw
             // assumes parent and child are exclusively locked 
             swip_value.bfRef().header.optimistic_parent_pointer.parent.last_swip_invalidation_version = swip_value.bfRef().header.latch.version;
             // hacky, have to find parent bf from swip, pid and  pos. 
-            static_assert(sizeof(BufferFrame) == 512+PAGE_SIZE);
+            static_assert(sizeof(BufferFrame) == 4096+PAGE_SIZE);
             u64 bf_index = ((u64)swip_x_guard.latch - (u64)this->bfs) / sizeof(BufferFrame);
             BufferFrame& parent_bf = this->bfs[bf_index];
             assert(&parent_bf.header.latch == swip_x_guard.latch); // the above calculation is correct
@@ -319,6 +323,7 @@ BufferFrame& BufferManager::resolveSwip(Guard& swip_guard, Swip<BufferFrame>& sw
       g_guard->unlock();
       // -------------------------------------------------------------------------------------
       auto start = mean::getTimePoint();
+
       readPageSync(pid, bf.page);
       /*
       //induce latnecy spikes
@@ -464,8 +469,10 @@ BufferFrame& BufferManager::resolveSwip(Guard& swip_guard, Swip<BufferFrame>& sw
 // -------------------------------------------------------------------------------------
 void BufferManager::readPageSync(u64 pid, u8* destination)
 {
-   assert(u64(destination) % 512 == 0);
+   //zhengxd: modify alignment to 4096
+   assert(u64(destination) % 4096 == 0);
    s64 bytes_left = PAGE_SIZE;
+
    mean::task::read(reinterpret_cast<char*>(destination), pid * PAGE_SIZE, bytes_left);
    // const int bytes_read = pread(ssd_fd, destination, bytes_left, pid * PAGE_SIZE + (PAGE_SIZE - bytes_left));
    // -------------------------------------------------------------------------------------

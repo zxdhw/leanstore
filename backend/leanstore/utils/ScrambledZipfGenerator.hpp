@@ -17,8 +17,9 @@ class ScrambledZipfGenerator
    ZipfGenerator zipf_generator;
    // 10000000000ul
    // [min, max)
-   ScrambledZipfGenerator(u64 min, u64 max, double theta) : min(min), max(max), n(max - min), zipf_generator((max - min) * 2, theta) {}
+   ScrambledZipfGenerator(u64 min, u64 max, double theta) : min(min), max(max), n(max - min), zipf_generator((max - min), theta) {}
    u64 rand();
+   u64 rand_nohash();
 };
 // -------------------------------------------------------------------------------------
 }  // namespace utils

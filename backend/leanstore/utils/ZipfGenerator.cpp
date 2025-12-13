@@ -12,18 +12,20 @@ namespace leanstore
 namespace utils
 {
 // -------------------------------------------------------------------------------------
-ZipfGenerator::ZipfGenerator(u64 ex_n, double theta) : n(ex_n - 1), theta(theta)
+ZipfGenerator::ZipfGenerator(u64 ex_n, double theta) : n(ex_n), theta(theta)
 {
    alpha = 1.0 / (1.0 - theta);
    zetan = zeta(n, theta);
-   eta = (1.0 - std::pow(2.0 / n, 1.0 - theta)) / (1.0 - zeta(2, theta) / zetan);
+	eta = (1 - std::pow(2.0 / n, 1 - theta))
+	            / (1 - (zeta(2,theta) / zetan));
+
 }
 // -------------------------------------------------------------------------------------
 double ZipfGenerator::zeta(u64 n, double theta)
 {
    double ans = 0;
    for (u64 i = 1; i <= n; i++)
-      ans += std::pow(1.0 / n, theta);
+      ans += 1.0/(std::pow(i, theta));
    return ans;
 }
 // -------------------------------------------------------------------------------------
@@ -35,10 +37,10 @@ uint64_t ZipfGenerator::rand()
    // return (u64)u;
    double uz = u * zetan;
    if (uz < 1) {
-      return 1;
+      return 0;
    }
    if (uz < (1 + std::pow(0.5, theta)))
-      return 2;
+      return 1;
    u64 ret = 1 + (long)(n * pow(eta * u - eta + 1, alpha));
    return ret;
 }
